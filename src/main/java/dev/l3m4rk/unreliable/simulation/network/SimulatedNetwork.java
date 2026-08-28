@@ -46,6 +46,8 @@ public final class SimulatedNetwork {
     public void send(NodeId source, NodeId destination, Message message) {
         var envelope = new Envelope(source, destination, message);
 
+        engine.record(new MessageSent(envelope));
+
         engine.schedule(latency, () -> deliver(envelope));
     }
 
@@ -59,6 +61,7 @@ public final class SimulatedNetwork {
 
     private void deliver(Envelope envelope) {
         if (shouldDrop(envelope)) {
+            engine.record(new MessageDropped(envelope));
             return;
         }
 
@@ -67,6 +70,8 @@ public final class SimulatedNetwork {
         if (node == null) {
             throw new IllegalStateException("Unknown destination node: " + envelope.destination());
         }
+
+        engine.record(new MessageDelivered(envelope));
 
         node.receive(envelope, new NodeSimulationContext(envelope.destination()));
     }

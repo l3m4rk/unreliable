@@ -9,7 +9,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SimulatedNetworkTests {
 
@@ -111,6 +111,72 @@ class SimulatedNetworkTests {
 
         assertThat(received.size()).isEqualTo(1);
         assertThat(received.getFirst().payload()).isEqualTo(new TestMessage("second"));
+    }
+
+    @Test
+    void recordsNetworkEvents() {
+        var engine = new SimulationEngine();
+        var network = new SimulatedNetwork(engine);
+
+        var destination = new TestNode(
+                new NodeId("payment"),
+                (envelope, context) -> {}
+        );
+
+        network.register(destination);
+
+        network.send(
+                new NodeId("client"),
+                destination.id(),
+                new TestMessage("hello")
+        );
+
+        engine.step();
+
+        assertEquals(2, engine.log().size());
+
+        assertInstanceOf(
+                MessageSent.class,
+                engine.log().get(0).event()
+        );
+
+        assertInstanceOf(
+                MessageDelivered.class,
+                engine.log().get(1).event()
+        );
+    }
+
+    @Test
+    void recordsDroppedMessage() {
+        var engine = new SimulationEngine();
+        var network = new SimulatedNetwork(engine);
+
+        var destination = new TestNode(
+                new NodeId("payment"),
+                (envelope, context) -> {}
+        );
+
+        network.register(destination);
+
+        network.addRule(new DropNext(TestMessage.class));
+
+        network.send(
+                new NodeId("client"),
+                destination.id(),
+                new TestMessage("hello")
+        );
+
+        engine.step();
+
+        assertInstanceOf(
+                MessageSent.class,
+                engine.log().get(0).event()
+        );
+
+        assertInstanceOf(
+                MessageDropped.class,
+                engine.log().get(1).event()
+        );
     }
 
     private record TestMessage(String value) implements Message {
