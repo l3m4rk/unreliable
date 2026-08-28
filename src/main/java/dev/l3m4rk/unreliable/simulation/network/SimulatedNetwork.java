@@ -46,6 +46,14 @@ public final class SimulatedNetwork {
         engine.schedule(latency, () -> deliver(envelope));
     }
 
+    public SimulationContext contextFor(NodeId nodeId) {
+        if (!nodes.containsKey(nodeId)) {
+            throw new IllegalArgumentException("Unknown node: " + nodeId);
+        }
+
+        return new NodeSimulationContext(nodeId);
+    }
+
     private void deliver(Envelope envelope) {
         var node = nodes.get(envelope.destination());
 

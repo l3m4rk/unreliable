@@ -49,6 +49,37 @@ class PaymentServiceTests {
         assertThat(response.amountCents()).isEqualTo(1_000);
     }
 
+    @Test
+    void completesPaymentRoundTrip() {
+        var engine = new SimulationEngine();
+        var network = new SimulatedNetwork(engine);
+
+        var client = new PaymentClient(new NodeId("client"));
+        var payment = new PaymentService(new NodeId("payment"));
+
+        network.register(payment);
+        network.register(client);
+
+        var request = new PaymentRequest(
+                UUID.fromString("00000000-0000-0000-0000-000000000042"),
+                "payment-42",
+                1_000
+        );
+
+        client.pay(payment.id(), request, network.contextFor(client.id()));
+
+        engine.step(); // request reaches payment
+        engine.step(); // response reaches client
+
+        assertThat(payment.chargeCount()).isEqualTo(1);
+        assertThat(payment.totalChargedCents()).isEqualTo(1_000);
+
+        var response = client.response().orElseThrow();
+
+        assertThat(response.paymentId()).isEqualTo(request.paymentId());
+        assertThat(response.amountCents()).isEqualTo(1_000);
+    }
+
     private static final class RecordingNode implements SimNode {
         private final NodeId id;
         private final List<Envelope> received = new ArrayList<>();
