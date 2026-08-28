@@ -1,8 +1,10 @@
 package dev.l3m4rk.unreliable.scenarios.lostack.client;
 
+import dev.l3m4rk.unreliable.scenarios.lostack.payment.PaymentResponse;
 import dev.l3m4rk.unreliable.scenarios.lostack.payment.PaymentService;
 import dev.l3m4rk.unreliable.simulation.NodeId;
 import dev.l3m4rk.unreliable.simulation.SimulationEngine;
+import dev.l3m4rk.unreliable.simulation.network.DropNext;
 import dev.l3m4rk.unreliable.simulation.network.SimulatedNetwork;
 import org.junit.jupiter.api.Test;
 
@@ -59,5 +61,53 @@ class PaymentClientTests {
 
         assertEquals(requestId, response.paymentId());
         assertEquals(1_000, response.amountCents());
+    }
+
+    @Test
+    void losesPaymentResponse() {
+        var engine = new SimulationEngine();
+        var network = new SimulatedNetwork(engine);
+
+        var clientId = new NodeId("client");
+        var paymentId = new NodeId("payment");
+
+        var client = new PaymentClient(
+                clientId,
+                paymentId
+        );
+
+        var payment = new PaymentService(
+                paymentId
+        );
+
+        network.register(client);
+        network.register(payment);
+
+        network.addRule(
+                new DropNext(PaymentResponse.class)
+        );
+
+        var requestId = UUID.fromString(
+                "00000000-0000-0000-0000-000000000042"
+        );
+
+        network.send(
+                new NodeId("scenario"),
+                client.id(),
+                new StartPayment(
+                        requestId,
+                        "payment-42",
+                        1_000
+                )
+        );
+
+        engine.step(); // StartPayment
+        engine.step(); // PaymentRequest
+        engine.step(); // PaymentResponse → DROPPED
+
+        assertEquals(1, payment.chargeCount());
+        assertEquals(1_000, payment.totalChargedCents());
+
+        assertTrue(client.response().isEmpty());
     }
 }

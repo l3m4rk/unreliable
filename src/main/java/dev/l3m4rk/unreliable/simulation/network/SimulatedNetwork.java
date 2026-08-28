@@ -6,13 +6,12 @@ import dev.l3m4rk.unreliable.simulation.SimulationContext;
 import dev.l3m4rk.unreliable.simulation.SimulationEngine;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public final class SimulatedNetwork {
     private final SimulationEngine engine;
     private final Map<NodeId, SimNode> nodes = new HashMap<>();
+    private final List<NetworkRule> rules = new ArrayList<>();
 
     private Duration latency = Duration.ZERO;
 
@@ -28,6 +27,10 @@ public final class SimulatedNetwork {
         if (previous != null) {
             throw new IllegalArgumentException("Node is already registered: " + node.id());
         }
+    }
+
+    public void addRule(NetworkRule rule) {
+        rules.add(Objects.requireNonNull(rule));
     }
 
     public void latency(Duration latency) {
@@ -55,6 +58,10 @@ public final class SimulatedNetwork {
     }
 
     private void deliver(Envelope envelope) {
+        if (shouldDrop(envelope)) {
+            return;
+        }
+
         var node = nodes.get(envelope.destination());
 
         if (node == null) {
@@ -62,6 +69,10 @@ public final class SimulatedNetwork {
         }
 
         node.receive(envelope, new NodeSimulationContext(envelope.destination()));
+    }
+
+    private boolean shouldDrop(Envelope envelope) {
+        return rules.stream().anyMatch(rule -> rule.shouldDrop(envelope));
     }
 
     private final class NodeSimulationContext implements SimulationContext {

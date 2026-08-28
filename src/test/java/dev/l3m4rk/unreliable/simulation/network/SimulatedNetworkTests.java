@@ -87,6 +87,32 @@ class SimulatedNetworkTests {
         assertThrows(IllegalStateException.class, engine::step);
     }
 
+    @Test
+    void dropsNextMatchingMessage() {
+        var engine = new SimulationEngine();
+        var network = new SimulatedNetwork(engine);
+
+        var received = new ArrayList<Envelope>();
+
+        var destination = new TestNode(
+                new NodeId("destination"),
+                ((envelope, context) -> received.add(envelope))
+        );
+
+        network.register(destination);
+
+        network.addRule(new DropNext(TestMessage.class));
+
+        network.send(new NodeId("source"), destination.id(), new TestMessage("first"));
+        network.send(new NodeId("source"), destination.id(), new TestMessage("second"));
+
+        engine.step();
+        engine.step();
+
+        assertThat(received.size()).isEqualTo(1);
+        assertThat(received.getFirst().payload()).isEqualTo(new TestMessage("second"));
+    }
+
     private record TestMessage(String value) implements Message {
     }
 
