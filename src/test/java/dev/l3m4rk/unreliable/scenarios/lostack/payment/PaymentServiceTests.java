@@ -1,5 +1,6 @@
 package dev.l3m4rk.unreliable.scenarios.lostack.payment;
 
+import dev.l3m4rk.unreliable.scenarios.lostack.client.PaymentClient;
 import dev.l3m4rk.unreliable.simulation.NodeId;
 import dev.l3m4rk.unreliable.simulation.SimulationContext;
 import dev.l3m4rk.unreliable.simulation.SimulationEngine;
@@ -54,17 +55,17 @@ class PaymentServiceTests {
         var engine = new SimulationEngine();
         var network = new SimulatedNetwork(engine);
 
-        var client = new PaymentClient(new NodeId("client"));
-        var payment = new PaymentService(new NodeId("payment"));
+        var clientId = new NodeId("client");
+        var paymentId = new NodeId("payment");
+
+        var client = new PaymentClient(clientId, paymentId);
+        var payment = new PaymentService(paymentId);
 
         network.register(payment);
         network.register(client);
 
-        var request = new PaymentRequest(
-                UUID.fromString("00000000-0000-0000-0000-000000000042"),
-                "payment-42",
-                1_000
-        );
+        var requestId = UUID.fromString("00000000-0000-0000-0000-000000000042");
+        var request = new PaymentRequest(requestId, "payment-42", 1_000);
 
         client.pay(payment.id(), request, network.contextFor(client.id()));
 
