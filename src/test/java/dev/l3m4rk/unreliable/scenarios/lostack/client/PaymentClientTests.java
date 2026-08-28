@@ -8,6 +8,7 @@ import dev.l3m4rk.unreliable.simulation.network.DropNext;
 import dev.l3m4rk.unreliable.simulation.network.SimulatedNetwork;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,7 +25,8 @@ class PaymentClientTests {
 
         var client = new PaymentClient(
                 clientId,
-                paymentId
+                paymentId,
+                Duration.ofMillis(500)
         );
 
         var payment = new PaymentService(
@@ -73,7 +75,8 @@ class PaymentClientTests {
 
         var client = new PaymentClient(
                 clientId,
-                paymentId
+                paymentId,
+                Duration.ofMillis(500)
         );
 
         var payment = new PaymentService(
@@ -109,5 +112,100 @@ class PaymentClientTests {
         assertEquals(1_000, payment.totalChargedCents());
 
         assertTrue(client.response().isEmpty());
+    }
+
+    @Test
+    void doesNotRetryWhenResponseArrives() {
+        var engine = new SimulationEngine();
+        var network = new SimulatedNetwork(engine);
+
+        var clientId = new NodeId("client");
+        var paymentId = new NodeId("payment");
+
+        var client = new PaymentClient(
+                clientId,
+                paymentId,
+                Duration.ofMillis(500)
+        );
+
+        var payment = new PaymentService(paymentId);
+
+        network.register(client);
+        network.register(payment);
+
+        network.send(
+                new NodeId("scenario"),
+                client.id(),
+                new StartPayment(
+                        UUID.fromString(
+                                "00000000-0000-0000-0000-000000000042"
+                        ),
+                        "payment-42",
+                        1_000
+                )
+        );
+
+        engine.step(); // StartPayment
+        engine.step(); // PaymentRequest
+        engine.step(); // PaymentResponse
+
+        engine.step(); // timeout at 500ms
+
+        assertEquals(1, client.attempts());
+        assertEquals(1, payment.chargeCount());
+    }
+
+    @Test
+    void retriesWhenPaymentResponseIsLost() {
+        var engine = new SimulationEngine();
+        var network = new SimulatedNetwork(engine);
+
+        var clientId = new NodeId("client");
+        var paymentId = new NodeId("payment");
+
+        var client = new PaymentClient(
+                clientId,
+                paymentId,
+                Duration.ofMillis(500)
+        );
+
+        var payment = new PaymentService(paymentId);
+
+        network.register(client);
+        network.register(payment);
+
+        network.addRule(
+                new DropNext(PaymentResponse.class)
+        );
+
+        network.send(
+                new NodeId("scenario"),
+                client.id(),
+                new StartPayment(
+                        UUID.fromString(
+                                "00000000-0000-0000-0000-000000000042"
+                        ),
+                        "payment-42",
+                        1_000
+                )
+        );
+
+        engine.step(); // StartPayment
+        engine.step(); // attempt #1 reaches payment
+        engine.step(); // response #1 is dropped
+
+        assertEquals(1, payment.chargeCount());
+        assertTrue(client.response().isEmpty());
+
+        engine.step(); // 500ms timeout → retry
+        engine.step(); // attempt #2 reaches payment
+        engine.step(); // response #2 reaches client
+
+        assertEquals(2, client.attempts());
+
+        assertEquals(2, payment.chargeCount());
+        assertEquals(2_000, payment.totalChargedCents());
+
+        assertTrue(client.response().isPresent());
     }
 }

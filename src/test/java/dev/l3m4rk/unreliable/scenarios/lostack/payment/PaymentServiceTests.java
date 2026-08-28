@@ -9,6 +9,7 @@ import dev.l3m4rk.unreliable.simulation.network.SimNode;
 import dev.l3m4rk.unreliable.simulation.network.SimulatedNetwork;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -58,7 +59,7 @@ class PaymentServiceTests {
         var clientId = new NodeId("client");
         var paymentId = new NodeId("payment");
 
-        var client = new PaymentClient(clientId, paymentId);
+        var client = new PaymentClient(clientId, paymentId, Duration.ofMillis(500));
         var payment = new PaymentService(paymentId);
 
         network.register(payment);
