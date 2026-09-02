@@ -1,5 +1,7 @@
 package dev.l3m4rk.unreliable.scenarios.lostack.client;
 
+import dev.l3m4rk.unreliable.scenarios.lostack.event.PaymentRetried;
+import dev.l3m4rk.unreliable.scenarios.lostack.event.PaymentTimedOut;
 import dev.l3m4rk.unreliable.scenarios.lostack.payment.PaymentRequest;
 import dev.l3m4rk.unreliable.scenarios.lostack.payment.PaymentResponse;
 import dev.l3m4rk.unreliable.simulation.NodeId;
@@ -73,9 +75,13 @@ public final class PaymentClient implements SimNode {
             return;
         }
 
+        context.record(new PaymentTimedOut(pendingRequest.paymentId(), attempts));
+
         if (attempts >= 2) {
             return;
         }
+
+        context.record(new PaymentRetried(pendingRequest.paymentId(), attempts + 1));
 
         sendAttempt(context);
     }

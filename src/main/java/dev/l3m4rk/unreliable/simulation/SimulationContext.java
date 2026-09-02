@@ -8,4 +8,5 @@ public interface SimulationContext {
     SimTime now();
     void send(NodeId destination, Message message);
     void schedule(Duration delay, Runnable action);
+    void record(SimulationEvent event);
 }

@@ -1,5 +1,6 @@
 package dev.l3m4rk.unreliable.scenarios.lostack.payment;
 
+import dev.l3m4rk.unreliable.scenarios.lostack.event.PaymentCharged;
 import dev.l3m4rk.unreliable.simulation.NodeId;
 import dev.l3m4rk.unreliable.simulation.SimulationContext;
 import dev.l3m4rk.unreliable.simulation.network.Envelope;
@@ -35,6 +36,8 @@ public final class PaymentService implements SimNode {
         totalChargedCents = Math.addExact(totalChargedCents, request.amountCents());
 
         chargeCount++;
+
+        context.record(new PaymentCharged(request.paymentId(), chargeId, request.amountCents()));
 
         context.send(envelope.source(), new PaymentResponse(request.paymentId(), chargeId, request.amountCents()));
     }

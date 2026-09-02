@@ -1,9 +1,6 @@
 package dev.l3m4rk.unreliable.simulation.network;
 
-import dev.l3m4rk.unreliable.simulation.NodeId;
-import dev.l3m4rk.unreliable.simulation.SimTime;
-import dev.l3m4rk.unreliable.simulation.SimulationContext;
-import dev.l3m4rk.unreliable.simulation.SimulationEngine;
+import dev.l3m4rk.unreliable.simulation.*;
 
 import java.time.Duration;
 import java.util.*;
@@ -100,6 +97,11 @@ public final class SimulatedNetwork {
         @Override
         public void schedule(Duration delay, Runnable action) {
             engine.schedule(delay, action);
+        }
+
+        @Override
+        public void record(SimulationEvent event) {
+            engine.record(event);
         }
     }
 }

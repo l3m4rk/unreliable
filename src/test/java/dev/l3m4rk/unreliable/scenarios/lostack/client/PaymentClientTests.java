@@ -1,14 +1,20 @@
 package dev.l3m4rk.unreliable.scenarios.lostack.client;
 
+import dev.l3m4rk.unreliable.scenarios.lostack.event.LostAckEvent;
+import dev.l3m4rk.unreliable.scenarios.lostack.event.PaymentCharged;
+import dev.l3m4rk.unreliable.scenarios.lostack.event.PaymentRetried;
+import dev.l3m4rk.unreliable.scenarios.lostack.event.PaymentTimedOut;
 import dev.l3m4rk.unreliable.scenarios.lostack.payment.PaymentResponse;
 import dev.l3m4rk.unreliable.scenarios.lostack.payment.PaymentService;
 import dev.l3m4rk.unreliable.simulation.NodeId;
 import dev.l3m4rk.unreliable.simulation.SimulationEngine;
+import dev.l3m4rk.unreliable.simulation.SimulationLogEntry;
 import dev.l3m4rk.unreliable.simulation.network.DropNext;
 import dev.l3m4rk.unreliable.simulation.network.SimulatedNetwork;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -178,13 +184,15 @@ class PaymentClientTests {
                 new DropNext(PaymentResponse.class)
         );
 
+        var requestId = UUID.fromString(
+                "00000000-0000-0000-0000-000000000042"
+        );
+
         network.send(
                 new NodeId("scenario"),
                 client.id(),
                 new StartPayment(
-                        UUID.fromString(
-                                "00000000-0000-0000-0000-000000000042"
-                        ),
+                        requestId,
                         "payment-42",
                         1_000
                 )
@@ -207,5 +215,37 @@ class PaymentClientTests {
         assertEquals(2_000, payment.totalChargedCents());
 
         assertTrue(client.response().isPresent());
+
+        var paymentEvents = engine.log()
+                .stream()
+                .map(SimulationLogEntry::event)
+                .filter(LostAckEvent.class::isInstance)
+                .map(LostAckEvent.class::cast)
+                .toList();
+
+        assertEquals(
+                List.of(
+                        new PaymentCharged(
+                                requestId,
+                                new UUID(0, 1),
+                                1_000
+                        ),
+                        new PaymentTimedOut(
+                                requestId,
+                                1
+                        ),
+                        new PaymentRetried(
+                                requestId,
+                                2
+                        ),
+                        new PaymentCharged(
+                                requestId,
+                                new UUID(0, 2),
+                                1_000
+                        )
+                ),
+                paymentEvents
+        );
+
     }
 }

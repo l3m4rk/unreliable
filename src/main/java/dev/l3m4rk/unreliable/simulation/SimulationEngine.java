@@ -26,7 +26,7 @@ public final class SimulationEngine {
         events.add(new ScheduledEvent(executionTime, nextSequence++, action));
     }
 
-    public void record(Object event) {
+    public void record(SimulationEvent event) {
         log.add(new SimulationLogEntry(now, event));
     }
 
